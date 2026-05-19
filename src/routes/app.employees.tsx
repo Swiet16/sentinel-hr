@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { createEmployee } from "@/lib/employees.functions";
 import { useRole } from "@/hooks/use-role";
 import { useAuthStore } from "@/store/auth-store";
 import { PageHeader, EmptyState } from "@/components/app/page-header";
@@ -10,15 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Plus, Search, Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,20 +48,38 @@ type Profile = {
   base_salary: number | null;
 };
 
+type DepartmentOption = {
+  id: string;
+  name: string;
+};
+
+type UserRoleEntry = {
+  user_id: string;
+  role: "super_admin" | "team_leader" | "employee";
+};
+
 function EmployeesPage() {
   const { isSuperAdmin, isManager } = useRole();
   const userId = useAuthStore((s) => s.user?.id);
   const qc = useQueryClient();
+  const createEmployeeFn = useServerFn(createEmployee);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">("edit");
+  const [formDepartmentId, setFormDepartmentId] = useState<string>("unassigned");
+  const [formStatus, setFormStatus] = useState<"active" | "inactive">("active");
+  const [formRole, setFormRole] = useState<"employee" | "team_leader">("employee");
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Profile[];
     },
@@ -63,7 +90,7 @@ function EmployeesPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("departments").select("id,name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as DepartmentOption[];
     },
   });
 
@@ -71,8 +98,8 @@ function EmployeesPage() {
     queryKey: ["user_roles_all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("user_roles").select("user_id, role");
-      if (error) return [];
-      return data;
+      if (error) return [] as UserRoleEntry[];
+      return (data ?? []) as UserRoleEntry[];
     },
   });
 
@@ -80,9 +107,7 @@ function EmployeesPage() {
     .filter((p) => (isManager ? true : p.user_id === userId))
     .filter((p) => (statusFilter === "all" ? true : p.status === statusFilter))
     .filter((p) => (deptFilter === "all" ? true : p.department_id === deptFilter))
-    .filter((p) =>
-      q ? (p.full_name ?? "").toLowerCase().includes(q.toLowerCase()) : true
-    );
+    .filter((p) => (q ? (p.full_name ?? "").toLowerCase().includes(q.toLowerCase()) : true));
 
   const save = useMutation({
     mutationFn: async (payload: Partial<Profile>) => {
@@ -108,10 +133,39 @@ function EmployeesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const deptName = (id: string | null) =>
-    departments?.find((d: any) => d.id === id)?.name ?? "—";
-  const roleOf = (uid: string) =>
-    (roles as any[])?.find((r) => r.user_id === uid)?.role ?? "employee";
+  const create = useMutation({
+    mutationFn: async (payload: {
+      email: string;
+      password: string;
+      fullName: string;
+      phone?: string;
+      jobTitle?: string;
+      departmentId?: string | null;
+      baseSalary?: number;
+      status: "active" | "inactive";
+      role: "employee" | "team_leader";
+    }) => {
+      await createEmployeeFn({
+        data: payload,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Employee added");
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      qc.invalidateQueries({ queryKey: ["user_roles_all"] });
+      setOpen(false);
+      setEditing(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deptName = (id: string | null) => departments?.find((d) => d.id === id)?.name ?? "—";
+  const roleOf = (uid: string) => {
+    const userRoles = (roles ?? []).filter((r) => r.user_id === uid).map((r) => r.role);
+    if (userRoles.includes("super_admin")) return "super_admin";
+    if (userRoles.includes("team_leader")) return "team_leader";
+    return "employee";
+  };
 
   return (
     <div>
@@ -120,8 +174,17 @@ function EmployeesPage() {
         description="Manage your workforce, profiles and assignments."
         actions={
           isSuperAdmin && (
-            <Button disabled className="opacity-60" title="Invite new users via /auth/signup">
-              <Plus className="mr-1.5 h-4 w-4" /> Invite (via sign-up)
+            <Button
+              onClick={() => {
+                setMode("create");
+                setEditing(null);
+                setFormDepartmentId("unassigned");
+                setFormStatus("active");
+                setFormRole("employee");
+                setOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Add employee
             </Button>
           )
         }
@@ -130,10 +193,17 @@ function EmployeesPage() {
       <Card className="mb-4 flex flex-wrap items-center gap-2 p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name" className="pl-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name"
+            className="pl-9"
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -141,11 +211,15 @@ function EmployeesPage() {
           </SelectContent>
         </Select>
         <Select value={deptFilter} onValueChange={setDeptFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All departments</SelectItem>
-            {departments?.map((d: any) => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            {departments?.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -153,9 +227,14 @@ function EmployeesPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="grid place-items-center p-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <div className="grid place-items-center p-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : visible.length === 0 ? (
-          <EmptyState title="No employees found" description="Adjust your filters or invite new team members." />
+          <EmptyState
+            title="No employees found"
+            description="Adjust your filters or invite new team members."
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -173,22 +252,45 @@ function EmployeesPage() {
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="h-8 w-8"><AvatarFallback>{(p.full_name ?? "?").slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          {(p.full_name ?? "?").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <div className="font-medium">{p.full_name ?? "Unnamed"}</div>
                         <div className="text-xs text-muted-foreground">{p.phone ?? ""}</div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge variant="secondary" className="capitalize">{roleOf(p.user_id).replace("_"," ")}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="capitalize">
+                      {roleOf(p.user_id).replace("_", " ")}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{deptName(p.department_id)}</TableCell>
                   <TableCell className="text-muted-foreground">{p.job_title ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge>
+                    <Badge variant={p.status === "active" ? "default" : "outline"}>
+                      {p.status}
+                    </Badge>
                   </TableCell>
                   {isSuperAdmin && (
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setMode("edit");
+                          setEditing(p);
+                          setFormDepartmentId(p.department_id ?? "unassigned");
+                          setFormStatus(p.status === "inactive" ? "inactive" : "active");
+                          setFormRole(
+                            roleOf(p.user_id) === "team_leader" ? "team_leader" : "employee",
+                          );
+                          setOpen(true);
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -200,40 +302,127 @@ function EmployeesPage() {
         )}
       </Card>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) {
+            setEditing(null);
+            setMode("edit");
+            setFormDepartmentId("unassigned");
+            setFormStatus("active");
+            setFormRole("employee");
+          }
+        }}
+      >
         <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader><SheetTitle>Edit employee</SheetTitle></SheetHeader>
-          {editing && (
+          <SheetHeader>
+            <SheetTitle>{mode === "create" ? "Add employee" : "Edit employee"}</SheetTitle>
+          </SheetHeader>
+          {(mode === "create" || editing) && (
             <form
               className="mt-6 space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
+                if (mode === "create") {
+                  create.mutate({
+                    email: String(f.get("email") ?? "").trim(),
+                    password: String(f.get("password") ?? ""),
+                    fullName: String(f.get("full_name") ?? "").trim(),
+                    phone: String(f.get("phone") ?? "").trim() || undefined,
+                    jobTitle: String(f.get("job_title") ?? "").trim() || undefined,
+                    baseSalary: Number(f.get("base_salary") ?? 0),
+                    departmentId: formDepartmentId === "unassigned" ? null : formDepartmentId,
+                    status: formStatus,
+                    role: formRole,
+                  });
+                  return;
+                }
+
                 save.mutate({
                   full_name: String(f.get("full_name") ?? ""),
                   phone: String(f.get("phone") ?? ""),
                   job_title: String(f.get("job_title") ?? ""),
                   base_salary: Number(f.get("base_salary") ?? 0),
-                  department_id: (f.get("department_id") as string) || null,
-                  status: String(f.get("status") ?? "active"),
+                  department_id: formDepartmentId === "unassigned" ? null : formDepartmentId,
+                  status: formStatus,
                 });
               }}
             >
-              <Field label="Full name"><Input name="full_name" defaultValue={editing.full_name ?? ""} /></Field>
-              <Field label="Phone"><Input name="phone" defaultValue={editing.phone ?? ""} /></Field>
-              <Field label="Job title"><Input name="job_title" defaultValue={editing.job_title ?? ""} /></Field>
-              <Field label="Base salary"><Input type="number" step="0.01" name="base_salary" defaultValue={String(editing.base_salary ?? 0)} /></Field>
+              {mode === "create" && (
+                <>
+                  <Field label="Work email">
+                    <Input name="email" type="email" required placeholder="name@company.com" />
+                  </Field>
+                  <Field label="Temporary password">
+                    <Input
+                      name="password"
+                      type="password"
+                      minLength={8}
+                      required
+                      placeholder="At least 8 characters"
+                    />
+                  </Field>
+                </>
+              )}
+              <Field label="Full name">
+                <Input name="full_name" required defaultValue={editing?.full_name ?? ""} />
+              </Field>
+              <Field label="Phone">
+                <Input name="phone" defaultValue={editing?.phone ?? ""} />
+              </Field>
+              <Field label="Job title">
+                <Input name="job_title" defaultValue={editing?.job_title ?? ""} />
+              </Field>
+              <Field label="Base salary">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="base_salary"
+                  defaultValue={String(editing?.base_salary ?? 0)}
+                />
+              </Field>
               <Field label="Department">
-                <Select name="department_id" defaultValue={editing.department_id ?? ""}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <Select value={formDepartmentId} onValueChange={setFormDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {departments?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {departments?.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Field>
+              {mode === "create" && (
+                <Field label="Role">
+                  <Select
+                    value={formRole}
+                    onValueChange={(value) => setFormRole(value as "employee" | "team_leader")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="team_leader">Team leader</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
               <Field label="Status">
-                <Select name="status" defaultValue={editing.status}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formStatus}
+                  onValueChange={(value) => setFormStatus(value as "active" | "inactive")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
@@ -241,8 +430,11 @@ function EmployeesPage() {
                 </Select>
               </Field>
               <SheetFooter>
-                <Button type="submit" disabled={save.isPending}>
-                  {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
+                <Button type="submit" disabled={save.isPending || create.isPending}>
+                  {(save.isPending || create.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}{" "}
+                  {mode === "create" ? "Add employee" : "Save"}
                 </Button>
               </SheetFooter>
             </form>
