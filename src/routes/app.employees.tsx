@@ -52,6 +52,9 @@ function EmployeesPage() {
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"create" | "edit">("edit");
+  const [formDepartmentId, setFormDepartmentId] = useState<string>("unassigned");
+  const [formStatus, setFormStatus] = useState<"active" | "inactive">("active");
+  const [formRole, setFormRole] = useState<"employee" | "team_leader">("employee");
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -150,7 +153,7 @@ function EmployeesPage() {
         description="Manage your workforce, profiles and assignments."
         actions={
           isSuperAdmin && (
-            <Button onClick={() => { setMode("create"); setEditing(null); setOpen(true); }}>
+            <Button onClick={() => { setMode("create"); setEditing(null); setFormDepartmentId("unassigned"); setFormStatus("active"); setFormRole("employee"); setOpen(true); }}>
               <Plus className="mr-1.5 h-4 w-4" /> Add employee
             </Button>
           )
@@ -230,7 +233,16 @@ function EmployeesPage() {
         )}
       </Card>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setEditing(null);
+          setMode("edit");
+          setFormDepartmentId("unassigned");
+          setFormStatus("active");
+          setFormRole("employee");
+        }
+      }}>
         <SheetContent className="w-full sm:max-w-md">
           <SheetHeader><SheetTitle>{mode === "create" ? "Add employee" : "Edit employee"}</SheetTitle></SheetHeader>
           {(mode === "create" || editing) && (
@@ -247,9 +259,9 @@ function EmployeesPage() {
                     phone: String(f.get("phone") ?? "").trim() || undefined,
                     jobTitle: String(f.get("job_title") ?? "").trim() || undefined,
                     baseSalary: Number(f.get("base_salary") ?? 0),
-                    departmentId: (f.get("department_id") as string) || null,
-                    status: String(f.get("status") ?? "active") as "active" | "inactive",
-                    role: String(f.get("role") ?? "employee") as "employee" | "team_leader",
+                    departmentId: formDepartmentId === "unassigned" ? null : formDepartmentId,
+                    status: formStatus,
+                    role: formRole,
                   });
                   return;
                 }
@@ -259,8 +271,8 @@ function EmployeesPage() {
                   phone: String(f.get("phone") ?? ""),
                   job_title: String(f.get("job_title") ?? ""),
                   base_salary: Number(f.get("base_salary") ?? 0),
-                  department_id: (f.get("department_id") as string) || null,
-                  status: String(f.get("status") ?? "active"),
+                  department_id: formDepartmentId === "unassigned" ? null : formDepartmentId,
+                  status: formStatus,
                 });
               }}
             >
@@ -275,7 +287,7 @@ function EmployeesPage() {
               <Field label="Job title"><Input name="job_title" defaultValue={editing?.job_title ?? ""} /></Field>
               <Field label="Base salary"><Input type="number" step="0.01" min="0" name="base_salary" defaultValue={String(editing?.base_salary ?? 0)} /></Field>
               <Field label="Department">
-                <Select name="department_id" defaultValue={editing?.department_id ?? "unassigned"}>
+                <Select value={formDepartmentId} onValueChange={setFormDepartmentId}>
                   <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
@@ -285,7 +297,7 @@ function EmployeesPage() {
               </Field>
               {mode === "create" && (
                 <Field label="Role">
-                  <Select name="role" defaultValue="employee">
+                  <Select value={formRole} onValueChange={(value) => setFormRole(value as "employee" | "team_leader")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="employee">Employee</SelectItem>
@@ -295,7 +307,7 @@ function EmployeesPage() {
                 </Field>
               )}
               <Field label="Status">
-                <Select name="status" defaultValue={editing?.status ?? "active"}>
+                <Select value={formStatus} onValueChange={(value) => setFormStatus(value as "active" | "inactive")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
