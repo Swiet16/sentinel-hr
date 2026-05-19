@@ -37,7 +37,7 @@ import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { useAuthStore } from "@/store/auth-store";
 
-export const Route = createFileRoute("/_app/")({
+export const Route = createFileRoute("/app/")({
   component: DashboardPage,
 });
 
