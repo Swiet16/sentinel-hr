@@ -50,6 +50,42 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_records: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           attendance_policy: Json
@@ -110,6 +146,80 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_requests: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          leave_type_id: string
+          reason: string | null
+          review_comment: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type_id: string
+          reason?: string | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type_id?: string
+          reason?: string | null
+          review_comment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_types: {
+        Row: {
+          color: string | null
+          default_balance: number
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          default_balance?: number
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          default_balance?: number
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -143,12 +253,92 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          period_end: string
+          period_start: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_end: string
+          period_start: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      payslips: {
+        Row: {
+          base_salary: number
+          created_at: string
+          deductions: number
+          id: string
+          net_pay: number
+          notes: string | null
+          overtime: number
+          period_end: string
+          period_start: string
+          run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          base_salary?: number
+          created_at?: string
+          deductions?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          overtime?: number
+          period_end: string
+          period_start: string
+          run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          base_salary?: number
+          created_at?: string
+          deductions?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          overtime?: number
+          period_end?: string
+          period_start?: string
+          run_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslips_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          base_salary: number | null
           created_at: string
+          department_id: string | null
           full_name: string | null
           id: string
+          job_title: string | null
           phone: string | null
           status: string
           updated_at: string
@@ -156,9 +346,12 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          base_salary?: number | null
           created_at?: string
+          department_id?: string | null
           full_name?: string | null
           id?: string
+          job_title?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
@@ -166,13 +359,92 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          base_salary?: number | null
           created_at?: string
+          department_id?: string | null
           full_name?: string | null
           id?: string
+          job_title?: string | null
           phone?: string | null
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_assignments: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          shift_id: string
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          shift_id: string
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          shift_id?: string
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          color: string | null
+          created_at: string
+          days: number[]
+          end_time: string
+          id: string
+          name: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          days?: number[]
+          end_time: string
+          id?: string
+          name: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          days?: number[]
+          end_time?: string
+          id?: string
+          name?: string
+          start_time?: string
+          updated_at?: string
         }
         Relationships: []
       }
