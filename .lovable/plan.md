@@ -1,132 +1,88 @@
+## Build out all remaining modules (Phase 2 → Phase 4)
 
-# Attendance & Workforce Management Admin Portal
+Right now only Auth + Dashboard are live. Every other sidebar page shows the "Coming in the next phase" placeholder. I'll replace all of them with real, Supabase-wired functionality, scoped by role (Super Admin / Team Leader / Employee).
 
-A premium, enterprise-grade admin portal built on React + Vite + TypeScript + Tailwind + shadcn/ui + Framer Motion + Supabase. Visual direction: **Navy Trust** (Deel-like) with **Outfit/Figtree** typography, glassmorphism surfaces, soft shadows, rounded-2xl cards, dark + light mode.
+### Modules to ship
 
-This is a very large scope. To deliver real production quality, the build is split into 4 phases. Phase 1 ships a fully working foundation (auth, roles, dashboard, layout, theming, DB). Each subsequent phase ships a complete module wired end-to-end with Supabase.
+**1. Employees** (`/app/employees`)
+- Table with search, status filter, department filter, pagination
+- Super Admin: create / edit / deactivate employees, assign role + department
+- Team Leader: view employees in their department (read-only)
+- Employee: view own profile only
+- Drawer for create/edit; avatar upload to `avatars` bucket
 
----
+**2. Departments** (`/app/departments`)
+- Grid of department cards (name, code, manager, headcount)
+- Super Admin: full CRUD, assign manager from employee list
+- Others: read-only
 
-## Phase 1 — Foundation, Auth, Roles & Dashboard
+**3. Attendance** (`/app/attendance`)
+- New tables: `attendance_records` (check_in, check_out, status, notes, location), with RLS
+- Today view: live check-in/out button for current user + manual entry for admins
+- History tab: filterable table by date range, employee, status
+- Approval queue for Team Leaders / Super Admin (approve/reject edits)
 
-**Architecture & setup**
-- Folder layout: `components/`, `pages/`, `layouts/`, `hooks/`, `lib/`, `services/`, `store/` (Zustand), `routes/`, `types/`, `utils/`, `context/`.
-- Theme tokens in `index.css` + `tailwind.config.ts` using Navy Trust palette (`#0f1b3d`, `#1e3a5f`, `#3b6fa0`, `#e8edf3`) as HSL semantic tokens. Outfit (headings) + Figtree (body). Glass surface utility, gradient accents, soft elevation scale, 2xl radius.
-- Dark/light mode toggle (Zustand-backed, persisted).
-- App shell layout: animated collapsible sidebar, top bar (search, notifications bell, theme toggle, profile menu), breadcrumbs, page transitions via Framer Motion.
+**4. Shifts** (`/app/shifts`)
+- New tables: `shifts` (name, start/end, days), `shift_assignments` (user_id, shift_id, date range)
+- Weekly calendar view with assignments
+- Super Admin / Team Leader: create shifts, assign to employees, resolve conflicts
 
-**Supabase schema (migration 1)**
-- `app_role` enum: `super_admin`, `team_leader`, `employee`.
-- `profiles` (user_id, full_name, avatar_url, phone, status).
-- `user_roles` (user_id, role) + `has_role()` security definer function.
-- `departments` (name, code, description, manager_id).
-- `activity_logs` (user_id, action, entity, metadata, ip, user_agent).
-- `settings` (company info, attendance policy JSON, notification prefs).
-- `notifications` (user_id, type, title, body, read_at).
-- Storage bucket: `avatars` (public read), `documents` (private).
-- RLS policies on every table; `has_role` used to gate admin/team-leader access.
-- Trigger to auto-create `profiles` row on signup; trigger to assign default `employee` role.
+**5. Leaves** (`/app/leaves`)
+- New tables: `leave_types`, `leave_requests` (type, start, end, reason, status), `leave_balances`
+- Employee: request leave, see balance + history
+- Team Leader / Super Admin: approval queue with approve/reject + comment
 
-**Auth**
-- Animated login page (glass card, gradient backdrop, subtle motion).
-- Sign in, forgot password (Supabase reset email), `/reset-password` route.
-- `onAuthStateChange` listener set up before `getSession()`; session persisted via Supabase client.
-- `ProtectedRoute` + `RoleRoute` wrappers; role-based redirects (super admin → admin dashboard, team leader → team dashboard, employee → self portal).
+**6. Payroll** (`/app/payroll`)
+- New tables: `payroll_runs`, `payslips` (user_id, period, base, overtime, deductions, net)
+- Computed from attendance + shifts (manual trigger by Super Admin)
+- Employee: view own payslips, download
+- Super Admin: run payroll for a period, edit individual payslips
 
-**Super Admin Dashboard**
-- KPI cards: total employees, present today, absent today, late today, on leave (animated counters).
-- Live attendance widget (Supabase Realtime channel on `attendance_logs`).
-- Weekly/monthly attendance line + bar charts (Recharts).
-- Department breakdown donut.
-- Recent activity feed (from `activity_logs`).
-- Quick-action cards (add employee, mark attendance, create shift, approve leaves).
+**7. Reports** (`/app/reports`)
+- KPI cards + charts: attendance trends, department breakdown, leave usage, overtime
+- Date range picker, department filter
+- CSV export for each report (Super Admin / Team Leader)
 
-**Deliverable:** Working app with auth, roles, theming, navigation shell, dashboard with real (seed-able) data.
+**8. Notifications** (`/app/notifications`)
+- List of `notifications` rows for current user
+- Mark read / mark all read, filter by type
+- Realtime subscription via Supabase channels
 
----
+**9. Settings** (`/app/settings`)
+- Tabs: Company (name, logo, timezone), Attendance Policy, Notifications, Roles
+- Super Admin: edit `company_settings`, manage user roles
+- Others: profile tab only (own name, phone, avatar, password)
 
-## Phase 2 — Employees & Departments
+### Cross-cutting work
 
-- `employees` table: employee_code (auto-generated), profile_id FK, department_id, designation, joining_date, employment_type, cnic/passport, emergency contacts, salary_base, work_schedule_id, status.
-- Pages: Employees list (advanced table with search, multi-filter, bulk select, CSV export), Employee detail (tabs: Overview, Attendance, Leaves, Payroll, Documents), Add/Edit drawer.
-- Avatar upload to `avatars` bucket.
-- Departments CRUD with manager assignment.
-- Designations management.
-- RLS: super_admin full access; team_leader read within their department; employee read self only.
+- **Role gating helpers**: `useRole()` hook + `<RoleGate roles={[...]}>` wrapper component
+- **Shared UI**: data-table primitive (sort/filter/pagination), drawer-form pattern, empty-state, confirmation dialog
+- **Server functions**: each module gets `*.functions.ts` files using `requireSupabaseAuth` for writes that need role checks
+- **RLS**: every new table gets enable + policies (own-row for employees, department-scope for team leaders via a `dept_members` helper, super_admin full access via `has_role`)
+- **Realtime**: notifications + attendance "currently checked in" widget
+- **Activity logs**: write to `activity_logs` on every create/update/delete
+- **Animations**: framer-motion page transitions already in place; add staggered row entrances + skeleton loaders
 
----
+### Technical details
 
-## Phase 3 — Attendance & Shifts
+- New migrations (one per module group): attendance, shifts, leaves, payroll. Each includes tables + indexes + `tg_set_updated_at` triggers + RLS policies using existing `has_role()` security-definer function.
+- `lib/server/<module>.functions.ts` for any mutation that needs cross-row validation (e.g., shift conflict check, payroll calc, leave balance decrement).
+- Client reads use the browser supabase client + TanStack Query for caching + invalidation on mutations.
+- Charts: Recharts (already installed), reuse `KpiCard`.
+- CSV export: simple client-side blob from query results.
+- File downloads (payslip PDF): defer to a later iteration — start with HTML/print view.
 
-- `shifts` (name, start_time, end_time, break_minutes, type: morning/evening/night/custom, color).
-- `shift_assignments` (employee_id, shift_id, date_from, date_to, rotation_pattern).
-- `attendance_logs` (employee_id, date, check_in_at, check_out_at, status: present/absent/late/half_day/leave, hours_worked, overtime_minutes, source: manual/qr/gps, device_info, ip_address, location_lat/lng, approved_by, notes).
-- Realtime channel subscription for live attendance board.
-- Manual admin controls: mark/edit/approve/reject attendance, bulk mark.
-- Late + half-day + overtime calculation via Postgres function based on shift policy.
-- Attendance calendar (month view per employee, color-coded statuses).
-- QR-ready and GPS-ready columns wired (UI scaffolding, no AI).
-- Shift calendar with drag-to-assign UX, conflict detection.
+### Order of execution
 
----
+1. Shared primitives (data-table, role gate, drawer-form) + migrations for attendance/shifts/leaves/payroll
+2. Employees + Departments (uses existing tables)
+3. Attendance + Shifts
+4. Leaves + Payroll
+5. Reports + Notifications + Settings
+6. Polish pass: animations, empty states, loading skeletons, mobile layout
 
-## Phase 4 — Leaves, Payroll, Reports, Notifications, Settings
+### Scope notes
 
-- `leave_types`, `leave_balances`, `leave_requests` (type, from, to, days, reason, status, approver_id, approver_notes).
-- Leave workflow: employee submits → team leader/super admin approves/rejects → balances updated via trigger → notification fired.
-- Leave calendar (org-wide).
-- `payroll_periods`, `payroll_runs`, `payslips` (gross, attendance deductions, overtime, bonuses, custom deductions, net).
-- Attendance-based payroll calculation function; payslip PDF export (jsPDF + html2canvas).
-- Reports: attendance, department, employee, shift, work-hours, monthly summary; heatmap (attendance density); CSV + PDF export.
-- Notifications: realtime bell + toasts via Supabase Realtime on `notifications` table.
-- Settings panel: company profile, attendance policy (grace minutes, half-day threshold, overtime rules), role permissions, theme, notification prefs, security (session timeout, password policy).
-- Audit logs page (super admin only) with filters.
-
----
-
-## Technical Details
-
-**Stack & libraries**
-- React 18 + Vite + TypeScript, React Router DOM, Tailwind, shadcn/ui, Framer Motion, Recharts, Zustand, Lucide React, `@supabase/supabase-js`, `date-fns`, `react-hook-form` + `zod`, `@tanstack/react-query`, jsPDF, papaparse.
-
-**Security**
-- Roles in a separate `user_roles` table (never on profiles).
-- `public.has_role(_user_id uuid, _role app_role)` security-definer function used in all RLS policies to prevent recursion.
-- Service role key never used in frontend; all privileged ops via edge functions if needed (none required for Phase 1).
-- Storage policies scoped by `auth.uid()` folder convention.
-
-**State & data flow**
-- Zustand stores: `useAuthStore`, `useThemeStore`, `useUIStore` (sidebar, modals).
-- React Query for server state (employees, attendance, etc.) with realtime cache invalidation from Supabase channels.
-
-**Design tokens (semantic HSL)**
-- `--background`, `--foreground`, `--primary` (navy `#0f1b3d`), `--accent` (azure `#3b6fa0`), `--surface-glass`, gradient `--gradient-primary` (navy → azure), shadow `--shadow-elevated`, radius base `1rem`/`1.5rem`.
-- All component variants reference tokens; no hard-coded colors in components.
-
-**Motion**
-- Page transitions (fade + 8px y-slide), sidebar item hover scale, KPI counter spring, chart mount stagger, modal scale-in. Restrained, enterprise-tasteful.
-
-**ASCII layout**
-```text
-+--------------------------------------------------------+
-|  Sidebar  |  Topbar (search • bell • theme • profile)  |
-|  (glass)  +--------------------------------------------+
-|  • Dash   |  Breadcrumb                                |
-|  • Emp    |  +------+ +------+ +------+ +------+       |
-|  • Att    |  | KPI  | | KPI  | | KPI  | | KPI  |       |
-|  • Shift  |  +------+ +------+ +------+ +------+       |
-|  • Leave  |  +------------------+ +-----------------+  |
-|  • Pay    |  | Attendance chart | | Live attendance |  |
-|  • Report |  +------------------+ +-----------------+  |
-|  • Set.   |  +------------------+ +-----------------+  |
-|           |  | Dept donut       | | Recent activity |  |
-+-----------+--+------------------+-+-----------------+--+
-```
-
----
-
-## What I'll build now (on approval)
-
-Phase 1 only — foundation, theme, auth (all 3 roles), Supabase schema for users/roles/profiles/departments/activity/settings/notifications + storage, app shell, and the Super Admin dashboard with real data and realtime widgets. After it's working, I'll move to Phase 2.
-
-This phased approach is required: attempting all modules in one pass produces shallow, broken code. Each phase ends in a fully usable product.
+- This is a multi-step build that will span several turns. I'll work through it module-by-module and post progress as I go.
+- No AI features, no external integrations — everything manual per the original brief.
+- PDF generation for payslips and complex shift-conflict resolution are kept minimal in v1; can be expanded later.
