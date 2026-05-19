@@ -221,7 +221,7 @@ function EmployeesPage() {
                   </TableCell>
                   {isSuperAdmin && (
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => { setEditing(p); setOpen(true); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setMode("edit"); setEditing(p); setFormDepartmentId(p.department_id ?? "unassigned"); setFormStatus((p.status === "inactive" ? "inactive" : "active")); setFormRole(roleOf(p.user_id) === "team_leader" ? "team_leader" : "employee"); setOpen(true); }}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
