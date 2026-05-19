@@ -9,7 +9,7 @@ const inviteEmployeeSchema = z.object({
   fullName: z.string().trim().min(1).max(120),
   phone: z.string().trim().max(40).optional(),
   jobTitle: z.string().trim().max(120).optional(),
-  departmentId: z.string().uuid().nullable().optional(),
+  departmentId: z.union([z.string().uuid(), z.literal("")]).nullable().optional().transform(v => v === "" ? null : v),
   baseSalary: z.number().min(0).max(100000000).optional(),
   status: z.enum(["active", "inactive"]).default("active"),
   role: z.enum(["employee", "team_leader"]).default("employee"),
@@ -77,7 +77,22 @@ export const createEmployee = createServerFn({ method: "POST" })
       throw new Error(profileError.message);
     }
 
+    // Update role: delete the auto-created "employee" role row first,
+    // then insert the correct role if it's not "employee".
+    // This prevents the user from having both "employee" AND "team_leader" roles.
     if (data.role !== "employee") {
+      // Remove the auto-created employee role (triggered by handle_new_user)
+      const { error: roleDeleteError } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", newUserId)
+        .eq("role", "employee");
+
+      if (roleDeleteError) {
+        throw new Error(roleDeleteError.message);
+      }
+
+      // Insert the actual role
       const { error: roleInsertError } = await supabaseAdmin.from("user_roles").insert({
         user_id: newUserId,
         role: data.role,
