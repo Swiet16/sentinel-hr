@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { createEmployee } from "@/lib/employees.functions";
 import { useRole } from "@/hooks/use-role";
 import { useAuthStore } from "@/store/auth-store";
 import { PageHeader, EmptyState } from "@/components/app/page-header";
@@ -43,11 +45,13 @@ function EmployeesPage() {
   const { isSuperAdmin, isManager } = useRole();
   const userId = useAuthStore((s) => s.user?.id);
   const qc = useQueryClient();
+  const createEmployeeFn = useServerFn(createEmployee);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"create" | "edit">("edit");
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -108,6 +112,32 @@ function EmployeesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const create = useMutation({
+    mutationFn: async (payload: {
+      email: string;
+      password: string;
+      fullName: string;
+      phone?: string;
+      jobTitle?: string;
+      departmentId?: string | null;
+      baseSalary?: number;
+      status: "active" | "inactive";
+      role: "employee" | "team_leader";
+    }) => {
+      await createEmployeeFn({
+        data: payload,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Employee added");
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      qc.invalidateQueries({ queryKey: ["user_roles_all"] });
+      setOpen(false);
+      setEditing(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const deptName = (id: string | null) =>
     departments?.find((d: any) => d.id === id)?.name ?? "—";
   const roleOf = (uid: string) =>
@@ -120,8 +150,8 @@ function EmployeesPage() {
         description="Manage your workforce, profiles and assignments."
         actions={
           isSuperAdmin && (
-            <Button disabled className="opacity-60" title="Invite new users via /auth/signup">
-              <Plus className="mr-1.5 h-4 w-4" /> Invite (via sign-up)
+            <Button onClick={() => { setMode("create"); setEditing(null); setOpen(true); }}>
+              <Plus className="mr-1.5 h-4 w-4" /> Add employee
             </Button>
           )
         }
@@ -202,13 +232,28 @@ function EmployeesPage() {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader><SheetTitle>Edit employee</SheetTitle></SheetHeader>
-          {editing && (
+          <SheetHeader><SheetTitle>{mode === "create" ? "Add employee" : "Edit employee"}</SheetTitle></SheetHeader>
+          {(mode === "create" || editing) && (
             <form
               className="mt-6 space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
+                if (mode === "create") {
+                  create.mutate({
+                    email: String(f.get("email") ?? "").trim(),
+                    password: String(f.get("password") ?? ""),
+                    fullName: String(f.get("full_name") ?? "").trim(),
+                    phone: String(f.get("phone") ?? "").trim() || undefined,
+                    jobTitle: String(f.get("job_title") ?? "").trim() || undefined,
+                    baseSalary: Number(f.get("base_salary") ?? 0),
+                    departmentId: (f.get("department_id") as string) || null,
+                    status: String(f.get("status") ?? "active") as "active" | "inactive",
+                    role: String(f.get("role") ?? "employee") as "employee" | "team_leader",
+                  });
+                  return;
+                }
+
                 save.mutate({
                   full_name: String(f.get("full_name") ?? ""),
                   phone: String(f.get("phone") ?? ""),
@@ -219,20 +264,38 @@ function EmployeesPage() {
                 });
               }}
             >
-              <Field label="Full name"><Input name="full_name" defaultValue={editing.full_name ?? ""} /></Field>
-              <Field label="Phone"><Input name="phone" defaultValue={editing.phone ?? ""} /></Field>
-              <Field label="Job title"><Input name="job_title" defaultValue={editing.job_title ?? ""} /></Field>
-              <Field label="Base salary"><Input type="number" step="0.01" name="base_salary" defaultValue={String(editing.base_salary ?? 0)} /></Field>
+              {mode === "create" && (
+                <>
+                  <Field label="Work email"><Input name="email" type="email" required placeholder="name@company.com" /></Field>
+                  <Field label="Temporary password"><Input name="password" type="password" minLength={8} required placeholder="At least 8 characters" /></Field>
+                </>
+              )}
+              <Field label="Full name"><Input name="full_name" required defaultValue={editing?.full_name ?? ""} /></Field>
+              <Field label="Phone"><Input name="phone" defaultValue={editing?.phone ?? ""} /></Field>
+              <Field label="Job title"><Input name="job_title" defaultValue={editing?.job_title ?? ""} /></Field>
+              <Field label="Base salary"><Input type="number" step="0.01" min="0" name="base_salary" defaultValue={String(editing?.base_salary ?? 0)} /></Field>
               <Field label="Department">
-                <Select name="department_id" defaultValue={editing.department_id ?? ""}>
+                <Select name="department_id" defaultValue={editing?.department_id ?? "unassigned"}>
                   <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {departments?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </Field>
+              {mode === "create" && (
+                <Field label="Role">
+                  <Select name="role" defaultValue="employee">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="team_leader">Team leader</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
               <Field label="Status">
-                <Select name="status" defaultValue={editing.status}>
+                <Select name="status" defaultValue={editing?.status ?? "active"}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
@@ -241,8 +304,8 @@ function EmployeesPage() {
                 </Select>
               </Field>
               <SheetFooter>
-                <Button type="submit" disabled={save.isPending}>
-                  {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
+                <Button type="submit" disabled={save.isPending || create.isPending}>
+                  {(save.isPending || create.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {mode === "create" ? "Add employee" : "Save"}
                 </Button>
               </SheetFooter>
             </form>
