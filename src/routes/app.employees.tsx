@@ -1,9 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createEmployee } from "@/lib/employees.functions";
 import { useRole } from "@/hooks/use-role";
 import { useAuthStore } from "@/store/auth-store";
 import { PageHeader, EmptyState } from "@/components/app/page-header";
@@ -62,7 +60,6 @@ function EmployeesPage() {
   const { isSuperAdmin, isManager } = useRole();
   const userId = useAuthStore((s) => s.user?.id);
   const qc = useQueryClient();
-  const createEmployeeFn = useServerFn(createEmployee);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -110,8 +107,10 @@ function EmployeesPage() {
     .filter((p) => (q ? (p.full_name ?? "").toLowerCase().includes(q.toLowerCase()) : true));
 
   const save = useMutation({
-    mutationFn: async (payload: Partial<Profile>) => {
+    mutationFn: async (payload: Partial<Profile> & { role?: "employee" | "team_leader" }) => {
       if (!editing) throw new Error("No row");
+
+      // 1. Update profile fields
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -124,10 +123,33 @@ function EmployeesPage() {
         })
         .eq("id", editing.id);
       if (error) throw error;
+
+      // 2. Update role if changed (only for non-super_admin users)
+      if (payload.role) {
+        const currentRole = roleOf(editing.user_id);
+        if (currentRole === "super_admin") {
+          // Never modify super_admin role from this UI
+        } else if (payload.role !== currentRole) {
+          // Delete old role entries (employee/team_leader)
+          const { error: deleteError } = await supabase
+            .from("user_roles")
+            .delete()
+            .eq("user_id", editing.user_id)
+            .in("role", ["employee", "team_leader"]);
+          if (deleteError) throw deleteError;
+
+          // Insert new role
+          const { error: insertError } = await supabase
+            .from("user_roles")
+            .insert({ user_id: editing.user_id, role: payload.role });
+          if (insertError) throw insertError;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Employee updated");
       qc.invalidateQueries({ queryKey: ["profiles"] });
+      qc.invalidateQueries({ queryKey: ["user_roles_all"] });
       setOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -145,9 +167,26 @@ function EmployeesPage() {
       status: "active" | "inactive";
       role: "employee" | "team_leader";
     }) => {
-      await createEmployeeFn({
-        data: payload,
+      // Get the current auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/create-employee", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Request failed" }));
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       toast.success("Employee added");
@@ -347,6 +386,7 @@ function EmployeesPage() {
                   base_salary: Number(f.get("base_salary") ?? 0),
                   department_id: formDepartmentId === "unassigned" ? null : formDepartmentId,
                   status: formStatus,
+                  role: formRole,
                 });
               }}
             >
@@ -399,7 +439,8 @@ function EmployeesPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              {mode === "create" && (
+              {/* Show role selector in both create and edit (hide for super_admin in edit) */}
+              {(mode === "create" || (mode === "edit" && roleOf(editing?.user_id ?? "") !== "super_admin")) && (
                 <Field label="Role">
                   <Select
                     value={formRole}
