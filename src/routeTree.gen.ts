@@ -16,7 +16,15 @@ import { Route as AuthSignupRouteImport } from './routes/auth.signup'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthForgotRouteImport } from './routes/auth.forgot'
+import { Route as AppShiftsRouteImport } from './routes/app.shifts'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppReportsRouteImport } from './routes/app.reports'
+import { Route as AppPayrollRouteImport } from './routes/app.payroll'
+import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
+import { Route as AppLeavesRouteImport } from './routes/app.leaves'
 import { Route as AppEmployeesRouteImport } from './routes/app.employees'
+import { Route as AppDepartmentsRouteImport } from './routes/app.departments'
+import { Route as AppAttendanceRouteImport } from './routes/app.attendance'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -53,16 +61,64 @@ const AuthForgotRoute = AuthForgotRouteImport.update({
   path: '/auth/forgot',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppShiftsRoute = AppShiftsRouteImport.update({
+  id: '/shifts',
+  path: '/shifts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPayrollRoute = AppPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeavesRoute = AppLeavesRouteImport.update({
+  id: '/leaves',
+  path: '/leaves',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEmployeesRoute = AppEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDepartmentsRoute = AppDepartmentsRouteImport.update({
+  id: '/departments',
+  path: '/departments',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAttendanceRoute = AppAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
   getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/attendance': typeof AppAttendanceRoute
+  '/app/departments': typeof AppDepartmentsRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/leaves': typeof AppLeavesRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/payroll': typeof AppPayrollRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/shifts': typeof AppShiftsRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -71,7 +127,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/attendance': typeof AppAttendanceRoute
+  '/app/departments': typeof AppDepartmentsRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/leaves': typeof AppLeavesRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/payroll': typeof AppPayrollRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/shifts': typeof AppShiftsRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -82,7 +146,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/attendance': typeof AppAttendanceRoute
+  '/app/departments': typeof AppDepartmentsRoute
   '/app/employees': typeof AppEmployeesRoute
+  '/app/leaves': typeof AppLeavesRoute
+  '/app/notifications': typeof AppNotificationsRoute
+  '/app/payroll': typeof AppPayrollRoute
+  '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/shifts': typeof AppShiftsRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -94,7 +166,15 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/app/attendance'
+    | '/app/departments'
     | '/app/employees'
+    | '/app/leaves'
+    | '/app/notifications'
+    | '/app/payroll'
+    | '/app/reports'
+    | '/app/settings'
+    | '/app/shifts'
     | '/auth/forgot'
     | '/auth/login'
     | '/auth/reset-password'
@@ -103,7 +183,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app/attendance'
+    | '/app/departments'
     | '/app/employees'
+    | '/app/leaves'
+    | '/app/notifications'
+    | '/app/payroll'
+    | '/app/reports'
+    | '/app/settings'
+    | '/app/shifts'
     | '/auth/forgot'
     | '/auth/login'
     | '/auth/reset-password'
@@ -113,7 +201,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/app/attendance'
+    | '/app/departments'
     | '/app/employees'
+    | '/app/leaves'
+    | '/app/notifications'
+    | '/app/payroll'
+    | '/app/reports'
+    | '/app/settings'
+    | '/app/shifts'
     | '/auth/forgot'
     | '/auth/login'
     | '/auth/reset-password'
@@ -181,6 +277,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/shifts': {
+      id: '/app/shifts'
+      path: '/shifts'
+      fullPath: '/app/shifts'
+      preLoaderRoute: typeof AppShiftsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reports': {
+      id: '/app/reports'
+      path: '/reports'
+      fullPath: '/app/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/payroll': {
+      id: '/app/payroll'
+      path: '/payroll'
+      fullPath: '/app/payroll'
+      preLoaderRoute: typeof AppPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notifications': {
+      id: '/app/notifications'
+      path: '/notifications'
+      fullPath: '/app/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/leaves': {
+      id: '/app/leaves'
+      path: '/leaves'
+      fullPath: '/app/leaves'
+      preLoaderRoute: typeof AppLeavesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/employees': {
       id: '/app/employees'
       path: '/employees'
@@ -188,16 +326,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/departments': {
+      id: '/app/departments'
+      path: '/departments'
+      fullPath: '/app/departments'
+      preLoaderRoute: typeof AppDepartmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/attendance': {
+      id: '/app/attendance'
+      path: '/attendance'
+      fullPath: '/app/attendance'
+      preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAttendanceRoute: typeof AppAttendanceRoute
+  AppDepartmentsRoute: typeof AppDepartmentsRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
+  AppLeavesRoute: typeof AppLeavesRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
+  AppPayrollRoute: typeof AppPayrollRoute
+  AppReportsRoute: typeof AppReportsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppShiftsRoute: typeof AppShiftsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAttendanceRoute: AppAttendanceRoute,
+  AppDepartmentsRoute: AppDepartmentsRoute,
   AppEmployeesRoute: AppEmployeesRoute,
+  AppLeavesRoute: AppLeavesRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
+  AppPayrollRoute: AppPayrollRoute,
+  AppReportsRoute: AppReportsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppShiftsRoute: AppShiftsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
