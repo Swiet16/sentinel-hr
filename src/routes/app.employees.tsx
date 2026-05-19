@@ -143,8 +143,12 @@ function EmployeesPage() {
 
   const deptName = (id: string | null) =>
     departments?.find((d: any) => d.id === id)?.name ?? "—";
-  const roleOf = (uid: string) =>
-    (roles as any[])?.find((r) => r.user_id === uid)?.role ?? "employee";
+  const roleOf = (uid: string) => {
+    const userRoles = ((roles as any[]) ?? []).filter((r) => r.user_id === uid).map((r) => r.role);
+    if (userRoles.includes("super_admin")) return "super_admin";
+    if (userRoles.includes("team_leader")) return "team_leader";
+    return "employee";
+  };
 
   return (
     <div>
