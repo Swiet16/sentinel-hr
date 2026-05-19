@@ -12,15 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Plus, Search, Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -69,7 +76,10 @@ function EmployeesPage() {
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Profile[];
     },
@@ -97,9 +107,7 @@ function EmployeesPage() {
     .filter((p) => (isManager ? true : p.user_id === userId))
     .filter((p) => (statusFilter === "all" ? true : p.status === statusFilter))
     .filter((p) => (deptFilter === "all" ? true : p.department_id === deptFilter))
-    .filter((p) =>
-      q ? (p.full_name ?? "").toLowerCase().includes(q.toLowerCase()) : true
-    );
+    .filter((p) => (q ? (p.full_name ?? "").toLowerCase().includes(q.toLowerCase()) : true));
 
   const save = useMutation({
     mutationFn: async (payload: Partial<Profile>) => {
@@ -151,8 +159,7 @@ function EmployeesPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const deptName = (id: string | null) =>
-    departments?.find((d) => d.id === id)?.name ?? "—";
+  const deptName = (id: string | null) => departments?.find((d) => d.id === id)?.name ?? "—";
   const roleOf = (uid: string) => {
     const userRoles = (roles ?? []).filter((r) => r.user_id === uid).map((r) => r.role);
     if (userRoles.includes("super_admin")) return "super_admin";
@@ -167,7 +174,16 @@ function EmployeesPage() {
         description="Manage your workforce, profiles and assignments."
         actions={
           isSuperAdmin && (
-            <Button onClick={() => { setMode("create"); setEditing(null); setFormDepartmentId("unassigned"); setFormStatus("active"); setFormRole("employee"); setOpen(true); }}>
+            <Button
+              onClick={() => {
+                setMode("create");
+                setEditing(null);
+                setFormDepartmentId("unassigned");
+                setFormStatus("active");
+                setFormRole("employee");
+                setOpen(true);
+              }}
+            >
               <Plus className="mr-1.5 h-4 w-4" /> Add employee
             </Button>
           )
@@ -177,10 +193,17 @@ function EmployeesPage() {
       <Card className="mb-4 flex flex-wrap items-center gap-2 p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name" className="pl-9" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name"
+            className="pl-9"
+          />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
@@ -188,11 +211,15 @@ function EmployeesPage() {
           </SelectContent>
         </Select>
         <Select value={deptFilter} onValueChange={setDeptFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All departments</SelectItem>
             {departments?.map((d: any) => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -200,9 +227,14 @@ function EmployeesPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="grid place-items-center p-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <div className="grid place-items-center p-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : visible.length === 0 ? (
-          <EmptyState title="No employees found" description="Adjust your filters or invite new team members." />
+          <EmptyState
+            title="No employees found"
+            description="Adjust your filters or invite new team members."
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -220,22 +252,45 @@ function EmployeesPage() {
                 <TableRow key={p.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="h-8 w-8"><AvatarFallback>{(p.full_name ?? "?").slice(0,2).toUpperCase()}</AvatarFallback></Avatar>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>
+                          {(p.full_name ?? "?").slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <div className="font-medium">{p.full_name ?? "Unnamed"}</div>
                         <div className="text-xs text-muted-foreground">{p.phone ?? ""}</div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge variant="secondary" className="capitalize">{roleOf(p.user_id).replace("_"," ")}</Badge></TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="capitalize">
+                      {roleOf(p.user_id).replace("_", " ")}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{deptName(p.department_id)}</TableCell>
                   <TableCell className="text-muted-foreground">{p.job_title ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={p.status === "active" ? "default" : "outline"}>{p.status}</Badge>
+                    <Badge variant={p.status === "active" ? "default" : "outline"}>
+                      {p.status}
+                    </Badge>
                   </TableCell>
                   {isSuperAdmin && (
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => { setMode("edit"); setEditing(p); setFormDepartmentId(p.department_id ?? "unassigned"); setFormStatus((p.status === "inactive" ? "inactive" : "active")); setFormRole(roleOf(p.user_id) === "team_leader" ? "team_leader" : "employee"); setOpen(true); }}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setMode("edit");
+                          setEditing(p);
+                          setFormDepartmentId(p.department_id ?? "unassigned");
+                          setFormStatus(p.status === "inactive" ? "inactive" : "active");
+                          setFormRole(
+                            roleOf(p.user_id) === "team_leader" ? "team_leader" : "employee",
+                          );
+                          setOpen(true);
+                        }}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -247,18 +302,23 @@ function EmployeesPage() {
         )}
       </Card>
 
-      <Sheet open={open} onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) {
-          setEditing(null);
-          setMode("edit");
-          setFormDepartmentId("unassigned");
-          setFormStatus("active");
-          setFormRole("employee");
-        }
-      }}>
+      <Sheet
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) {
+            setEditing(null);
+            setMode("edit");
+            setFormDepartmentId("unassigned");
+            setFormStatus("active");
+            setFormRole("employee");
+          }
+        }}
+      >
         <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader><SheetTitle>{mode === "create" ? "Add employee" : "Edit employee"}</SheetTitle></SheetHeader>
+          <SheetHeader>
+            <SheetTitle>{mode === "create" ? "Add employee" : "Edit employee"}</SheetTitle>
+          </SheetHeader>
           {(mode === "create" || editing) && (
             <form
               className="mt-6 space-y-4"
@@ -292,27 +352,62 @@ function EmployeesPage() {
             >
               {mode === "create" && (
                 <>
-                  <Field label="Work email"><Input name="email" type="email" required placeholder="name@company.com" /></Field>
-                  <Field label="Temporary password"><Input name="password" type="password" minLength={8} required placeholder="At least 8 characters" /></Field>
+                  <Field label="Work email">
+                    <Input name="email" type="email" required placeholder="name@company.com" />
+                  </Field>
+                  <Field label="Temporary password">
+                    <Input
+                      name="password"
+                      type="password"
+                      minLength={8}
+                      required
+                      placeholder="At least 8 characters"
+                    />
+                  </Field>
                 </>
               )}
-              <Field label="Full name"><Input name="full_name" required defaultValue={editing?.full_name ?? ""} /></Field>
-              <Field label="Phone"><Input name="phone" defaultValue={editing?.phone ?? ""} /></Field>
-              <Field label="Job title"><Input name="job_title" defaultValue={editing?.job_title ?? ""} /></Field>
-              <Field label="Base salary"><Input type="number" step="0.01" min="0" name="base_salary" defaultValue={String(editing?.base_salary ?? 0)} /></Field>
+              <Field label="Full name">
+                <Input name="full_name" required defaultValue={editing?.full_name ?? ""} />
+              </Field>
+              <Field label="Phone">
+                <Input name="phone" defaultValue={editing?.phone ?? ""} />
+              </Field>
+              <Field label="Job title">
+                <Input name="job_title" defaultValue={editing?.job_title ?? ""} />
+              </Field>
+              <Field label="Base salary">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="base_salary"
+                  defaultValue={String(editing?.base_salary ?? 0)}
+                />
+              </Field>
               <Field label="Department">
                 <Select value={formDepartmentId} onValueChange={setFormDepartmentId}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {departments?.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    {departments?.map((d: any) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </Field>
               {mode === "create" && (
                 <Field label="Role">
-                  <Select value={formRole} onValueChange={(value) => setFormRole(value as "employee" | "team_leader")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={formRole}
+                    onValueChange={(value) => setFormRole(value as "employee" | "team_leader")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="employee">Employee</SelectItem>
                       <SelectItem value="team_leader">Team leader</SelectItem>
@@ -321,8 +416,13 @@ function EmployeesPage() {
                 </Field>
               )}
               <Field label="Status">
-                <Select value={formStatus} onValueChange={(value) => setFormStatus(value as "active" | "inactive")}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formStatus}
+                  onValueChange={(value) => setFormStatus(value as "active" | "inactive")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
@@ -331,7 +431,10 @@ function EmployeesPage() {
               </Field>
               <SheetFooter>
                 <Button type="submit" disabled={save.isPending || create.isPending}>
-                  {(save.isPending || create.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {mode === "create" ? "Add employee" : "Save"}
+                  {(save.isPending || create.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}{" "}
+                  {mode === "create" ? "Add employee" : "Save"}
                 </Button>
               </SheetFooter>
             </form>
