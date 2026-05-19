@@ -53,6 +53,7 @@ function SettingsPage() {
 
   const saveCompany = useMutation({
     mutationFn: async (p: any) => {
+      if (!company?.id) throw new Error("No company settings row");
       const { error } = await supabase.from("company_settings").update(p).eq("id", company.id);
       if (error) throw error;
     },
