@@ -41,6 +41,16 @@ type Profile = {
   base_salary: number | null;
 };
 
+type DepartmentOption = {
+  id: string;
+  name: string;
+};
+
+type UserRoleEntry = {
+  user_id: string;
+  role: "super_admin" | "team_leader" | "employee";
+};
+
 function EmployeesPage() {
   const { isSuperAdmin, isManager } = useRole();
   const userId = useAuthStore((s) => s.user?.id);
@@ -70,7 +80,7 @@ function EmployeesPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("departments").select("id,name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as DepartmentOption[];
     },
   });
 
@@ -78,8 +88,8 @@ function EmployeesPage() {
     queryKey: ["user_roles_all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("user_roles").select("user_id, role");
-      if (error) return [];
-      return data;
+      if (error) return [] as UserRoleEntry[];
+      return (data ?? []) as UserRoleEntry[];
     },
   });
 
@@ -142,9 +152,9 @@ function EmployeesPage() {
   });
 
   const deptName = (id: string | null) =>
-    departments?.find((d: any) => d.id === id)?.name ?? "—";
+    departments?.find((d) => d.id === id)?.name ?? "—";
   const roleOf = (uid: string) => {
-    const userRoles = ((roles as any[]) ?? []).filter((r) => r.user_id === uid).map((r) => r.role);
+    const userRoles = (roles ?? []).filter((r) => r.user_id === uid).map((r) => r.role);
     if (userRoles.includes("super_admin")) return "super_admin";
     if (userRoles.includes("team_leader")) return "team_leader";
     return "employee";
